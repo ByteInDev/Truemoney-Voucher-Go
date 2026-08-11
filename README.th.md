@@ -124,7 +124,28 @@ make docker-build  # docker build -t truemoney-voucher
 make deploy-local  # docker run -d -p 3000:3000 truemoney-voucher
 make deploy        # cross-compile + ssh/scp ไปยัง remote server
                    # (host/user ฝังใน Makefile - แก้ไขก่อนใช้งาน!)
+make vercel-deploy # vercel --prod (serverless)
 ```
+
+## Deploy บน Vercel
+
+Vercel [Go Framework Preset](https://vercel.com/docs/functions/runtimes/go)
+รันเซิร์ฟเวอร์ตามเดิม — เลือกเวอร์ชัน `go` จาก `go.mod` (1.26) สร้าง
+`cmd/api/main.go` และเซิร์ฟเวอร์ฟังพอร์ต `PORT` ที่ Vercel จัดให้
+ไม่ต้องแก้โค้ดเลย:
+
+```bash
+vercel --prod
+```
+
+`vercel.json` ตั้งแค่ `"framework": "go"` เท่านั้น
+
+**ข้อควรระวังแบบ serverless** — แต่ละ invocation เป็น process ใหม่ ดังนั้น:
+
+- TLS/HTTP2 connection pool และ shared cookie jar `cf_clearance` เริ่มเย็น
+  ทุก request; พฤติกรรมกับ Cloudflare และ latency อาจต่างจาก Docker/VPS
+- ลิงก์ redeem ที่ encode `%2F` อาจถูก platform normalize ก่อนถึงเซิร์ฟเวอร์ —
+  แนะนำ `curl --path-as-is` (บน Docker/VPS ทำงานปกติ)
 
 ## สถาปัตยกรรม (โดยย่อ)
 

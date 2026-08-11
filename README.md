@@ -114,6 +114,27 @@ Inside `status.code` of the envelope:
 PORT=8080 go run ./cmd/api
 ```
 
+## Deploy to Vercel
+
+The Vercel [Go Framework Preset](https://vercel.com/docs/functions/runtimes/go)
+runs the server as-is — it picks the `go` version from `go.mod` (1.26),
+builds `cmd/api/main.go`, and the server listens on the `PORT` Vercel
+provides. No code changes:
+
+```bash
+vercel --prod
+```
+
+`vercel.json` only sets `"framework": "go"`.
+
+**Serverless caveats** — each invocation is a fresh process, so:
+
+- the TLS/HTTP2 connection pool and the shared `cf_clearance` cookie jar
+  start cold on every request; Cloudflare behaviour and latency may differ
+  from Docker/VPS
+- `%2F`-encoded redeem links may be normalized by the platform before they
+  reach the server — prefer `curl --path-as-is` (works on Docker/VPS)
+
 ## Build and Deploy
 
 ```bash
@@ -124,6 +145,7 @@ make docker-build  # docker build -t truemoney-voucher
 make deploy-local  # docker run -d -p 3000:3000 truemoney-voucher
 make deploy        # cross-compile + ssh/scp to a remote server
                    # (host/user hardcoded in the Makefile - edit first!)
+make vercel-deploy # vercel --prod (serverless)
 ```
 
 ## Architecture (tl;dr)

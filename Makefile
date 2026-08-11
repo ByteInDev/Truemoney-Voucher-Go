@@ -1,4 +1,4 @@
-.PHONY: run build vet tidy docker-build deploy deploy-local
+.PHONY: run build vet tidy docker-build deploy deploy-local vercel-deploy
 
 # go build appends .exe automatically on Windows; the deployed artifact is
 # always a Linux binary, built explicitly in the deploy target.
@@ -34,3 +34,6 @@ deploy-local:
 	docker build -t truemoney-voucher -f deployments/Dockerfile .
 	docker run -d -p 3000:3000 --name truemoney-voucher truemoney-voucher
 	@echo "Local deployment complete! Service running on http://localhost:3000"
+
+vercel-deploy:
+	vercel --prod
