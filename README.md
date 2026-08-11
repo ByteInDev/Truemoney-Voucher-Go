@@ -2,7 +2,7 @@
 
 <div align="center">
 
-# Truemoney-Voucher
+# Truemoney-Voucher (Go)
 
 **REST API for redeeming TrueMoney gift vouchers** — Go, no database, stdlib only
 

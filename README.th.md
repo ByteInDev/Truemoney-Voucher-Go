@@ -2,7 +2,7 @@
 
 <div align="center">
 
-# Truemoney-Voucher
+# Truemoney-Voucher (Go)
 
 **REST API สำหรับแลกรับ TrueMoney Gift Voucher** — Go, ไม่มี database, ใช้แค่ stdlib
 
