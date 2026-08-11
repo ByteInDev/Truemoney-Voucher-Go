@@ -26,6 +26,11 @@ func main() {
 	defer stop()
 
 	tm := truemoney.NewClient()
+	// Keep a pooled connection + cf_clearance warm so redeems after an
+	// idle gap do not pay the ~120 ms connection setup cost (see
+	// truemoney.StartWarmer). Interval matches the Go-Product compose
+	// default (15 s), well under the httpx 30 s idle timeout.
+	go tm.StartWarmer(ctx, 15*time.Second, logger)
 	srv := server.New(cfg, logger, tm)
 
 	errCh := make(chan error, 1)

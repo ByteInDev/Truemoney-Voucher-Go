@@ -53,22 +53,27 @@ func (w *statusRecorder) Unwrap() http.ResponseWriter {
 	return w.ResponseWriter
 }
 
-// Logging logs one structured line per request via slog.
-func Logging(logger *slog.Logger) func(http.Handler) http.Handler {
+// Logging logs one structured line per request via slog. When rec is
+// non-nil, it also records the per-route latency for the root endpoint.
+func Logging(logger *slog.Logger, rec *LatencyRecorder) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			started := time.Now()
-			rec := &statusRecorder{ResponseWriter: w}
-			next.ServeHTTP(rec, r)
-			if rec.status == 0 {
-				rec.status = http.StatusOK
+			recorder := &statusRecorder{ResponseWriter: w}
+			next.ServeHTTP(recorder, r)
+			if recorder.status == 0 {
+				recorder.status = http.StatusOK
 			}
+			elapsed := time.Since(started)
 			logger.Info("request",
 				"method", r.Method,
 				"path", r.URL.Path,
-				"status", rec.status,
-				"duration_ms", time.Since(started).Milliseconds(),
+				"status", recorder.status,
+				"duration_ms", elapsed.Milliseconds(),
 			)
+			if rec != nil {
+				rec.Record(r.URL.Path, elapsed)
+			}
 		})
 	}
 }

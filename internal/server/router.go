@@ -17,12 +17,14 @@ type api struct {
 	cfg    *config.Config
 	logger *slog.Logger
 	tm     *truemoney.Client
+	rec    *middleware.LatencyRecorder
 }
 
 // NewRouter registers all routes and wraps them in the middleware chain.
 // Route method-patterns ("GET /truemoney/{code}/{mobile}") require Go 1.22+.
 func NewRouter(cfg *config.Config, logger *slog.Logger, tm *truemoney.Client) http.Handler {
-	h := &api{cfg: cfg, logger: logger, tm: tm}
+	rec := middleware.NewLatencyRecorder()
+	h := &api{cfg: cfg, logger: logger, tm: tm, rec: rec}
 
 	mux := http.NewServeMux()
 
@@ -46,7 +48,7 @@ func NewRouter(cfg *config.Config, logger *slog.Logger, tm *truemoney.Client) ht
 		writeAppError(w, model.ErrNotFound)
 	})
 
-	return middleware.CORS(middleware.Recover(logger)(middleware.Logging(logger)(mux)))
+	return middleware.CORS(middleware.Recover(logger)(middleware.Logging(logger, rec)(mux)))
 }
 
 // handleRedeem redeems a voucher to the given Thai mobile number.
@@ -84,14 +86,14 @@ func (h *api) handleStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// handleRoot answers with basic service information.
+// handleRoot answers with a JSON service banner plus the last observed
+// latency (ms) of every route that has been hit, e.g.
+// {"ms": {"/": 1, "/status": 0, "/truemoney": 342},
+//  "message": "ByteInDev Service"}.
 func (h *api) handleRoot(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, map[string]any{
-		"service": "truemoney-voucher",
-		"routes": []string{
-			"GET|POST /truemoney/{code}/{mobile}  redeem voucher",
-			"GET|POST /status                     liveness probe",
-		},
+		"ms":      h.rec.Snapshot(),
+		"message": "ByteInDev Service",
 	})
 }
 

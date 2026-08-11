@@ -7,6 +7,7 @@
 package truemoney
 
 import (
+	"bytes"
 	"compress/flate"
 	"compress/gzip"
 	"encoding/json"
@@ -14,12 +15,37 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"sync"
 	"time"
 
 	"github.com/andybalholm/brotli"
 
 	"truemoney-voucher/internal/httpx"
 )
+
+// gzipReaderPool reuses gzip readers so decompressing upstream responses
+// does not allocate the reader state per request.
+var gzipReaderPool = sync.Pool{
+	New: func() any {
+		r, _ := gzip.NewReader(bytes.NewReader(nil))
+		return r
+	},
+}
+
+func getGzipReader(r io.Reader) (*gzip.Reader, error) {
+	if gr, ok := gzipReaderPool.Get().(*gzip.Reader); ok {
+		if err := gr.Reset(r); err != nil {
+			return nil, err
+		}
+		return gr, nil
+	}
+	return gzip.NewReader(r)
+}
+
+func putGzipReader(gr *gzip.Reader) {
+	_ = gr.Close()
+	gzipReaderPool.Put(gr)
+}
 
 // Client performs TrueMoney voucher API calls over a browser-mimicking
 // transport. It is safe for concurrent use.
@@ -29,10 +55,15 @@ import (
 // improves stability against Cloudflare — but cookies are not isolated
 // per caller.
 type Client struct {
-	http *http.Client
+	http  *http.Client
+	cache *redeemCache
+	// probeURL overrides the upstream base URL in tests so probes never
+	// touch the real endpoint; empty means https://gift.truemoney.com.
+	probeURL string
 }
 
 // NewClient builds a Client with the browser fingerprint transport.
+// Successful redeem answers are cached for ten minutes (see cache.go).
 func NewClient() *Client {
 	jar, _ := cookiejar.New(nil)
 	return &Client{
@@ -41,6 +72,7 @@ func NewClient() *Client {
 			Timeout: 15 * time.Second,
 			Transport: httpx.NewTransport(),
 		},
+		cache: newRedeemCache(10*time.Minute, 1024),
 	}
 }
 
@@ -58,11 +90,11 @@ func (c *Client) doJSON(req *http.Request) (json.RawMessage, error) {
 
 	switch resp.Header.Get("Content-Encoding") {
 	case "gzip":
-		gr, gzErr := gzip.NewReader(resp.Body)
+		gr, gzErr := getGzipReader(resp.Body)
 		if gzErr != nil {
 			return nil, fmt.Errorf("gzip reader: %w", gzErr)
 		}
-		defer gr.Close()
+		defer putGzipReader(gr)
 		data, err := io.ReadAll(io.LimitReader(gr, 2<<20))
 		if err != nil {
 			return nil, fmt.Errorf("read response: %w", err)
@@ -124,13 +156,13 @@ func validJSON(data []byte, statusCode int) (json.RawMessage, error) {
 	return json.RawMessage(data), nil
 }
 
+// envelopeStatusNeedle is the JSON key that identifies a TrueMoney-style
+// status envelope; hoisted so bytes.Contains does not allocate a needle
+// per check.
+var envelopeStatusNeedle = []byte(`"status"`)
+
 // isTrueMoneyEnvelope reports whether data is TrueMoney-style JSON, i.e.
 // it carries a "status" object (TrueMoney's own error convention).
 func isTrueMoneyEnvelope(data []byte) bool {
-	var m map[string]json.RawMessage
-	if err := json.Unmarshal(data, &m); err != nil {
-		return false
-	}
-	_, ok := m["status"]
-	return ok
+	return bytes.Contains(data, envelopeStatusNeedle)
 }
