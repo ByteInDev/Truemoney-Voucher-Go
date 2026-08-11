@@ -135,6 +135,12 @@ vercel --prod
 - `%2F`-encoded redeem links may be normalized by the platform before they
   reach the server — prefer `curl --path-as-is` (works on Docker/VPS)
 
+**Performance on the Free (Hobby) plan:** the binary is stripped with
+`GO_BUILD_FLAGS=-ldflags '-s -w'` (faster cold start) and functions run in
+`iad1` (US East) only — Thailand→Virginia RTT (~200 ms) is fixed and
+unavoidable on a free plan. Measure with a keep-alive client, not a fresh
+`curl.exe` per request, to see actual server time.
+
 ## Build and Deploy
 
 ```bash

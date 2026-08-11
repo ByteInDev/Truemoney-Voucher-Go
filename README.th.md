@@ -147,6 +147,12 @@ vercel --prod
 - ลิงก์ redeem ที่ encode `%2F` อาจถูก platform normalize ก่อนถึงเซิร์ฟเวอร์ —
   แนะนำ `curl --path-as-is` (บน Docker/VPS ทำงานปกติ)
 
+**ประสิทธิภาพบน Free (Hobby) plan:** binary ถูก strip ด้วย
+`GO_BUILD_FLAGS=-ldflags '-s -w'` (cold start เร็วขึ้น) และฟังก์ชันรันได้แค่
+`iad1` (US East) — RTT ไทย→เวอร์จิเนีย (~200 ms) แก้ไม่ได้บน free plan
+วัดด้วย client แบบ keep-alive อย่าใช้ `curl.exe` ใหม่ทุกครั้งเพื่อดูเวลา
+server จริง
+
 ## สถาปัตยกรรม (โดยย่อ)
 
 - **`internal/truemoney`** — ตรรกะฝั่ง TrueMoney: endpoints, validation,
