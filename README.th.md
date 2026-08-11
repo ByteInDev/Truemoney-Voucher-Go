@@ -9,6 +9,7 @@
 ![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)
 ![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
+[![Live on Vercel](https://img.shields.io/badge/Live-Vercel-000000?logo=vercel&logoColor=white)](https://truemoney-voucher-go.vercel.app)
 
 [English](README.md) - **ไทย**
 
