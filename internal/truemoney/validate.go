@@ -56,10 +56,14 @@ func VoucherCode(voucher string) (string, error) {
 	return voucher, nil
 }
 
+// mobileReplacer strips spaces and dashes from phone input; hoisted so
+// the replacement tables are built once instead of per request.
+var mobileReplacer = strings.NewReplacer(" ", "", "-", "")
+
 // MobileNumber validates and normalizes a Thai mobile number
 // (10 digits, starting with 0).
 func MobileNumber(phoneNumber string) (string, error) {
-	phoneNumber = strings.NewReplacer(" ", "", "-", "").Replace(strings.TrimSpace(phoneNumber))
+	phoneNumber = mobileReplacer.Replace(strings.TrimSpace(phoneNumber))
 	if len(phoneNumber) != 10 || phoneNumber[0] != '0' {
 		return "", validationErrorf("mobile number must contain 10 digits and start with 0")
 	}
