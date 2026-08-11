@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -63,7 +64,14 @@ func (h *api) handleRedeem(w http.ResponseWriter, r *http.Request) {
 	result, err := h.tm.Redeem(r.Context(), code, mobile)
 	if err != nil {
 		h.logger.Error("redeem failed", "err", err, "code", maskCode(code))
-		writeAppError(w, model.ErrInternal)
+		// Input validation failures (bad code/mobile) are client errors (400);
+		// everything else (upstream, I/O, encoding) is a server error (500).
+		var verr *truemoney.ValidationError
+		if errors.As(err, &verr) {
+			writeAppError(w, model.ErrBadRequest)
+		} else {
+			writeAppError(w, model.ErrInternal)
+		}
 		return
 	}
 
