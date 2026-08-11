@@ -1,0 +1,8 @@
+# Build artifacts
+bin/
+
+# Local environment (never commit secrets)
+.env
+
+# Runtime logs
+*.log
